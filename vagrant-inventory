@@ -1,0 +1,7 @@
+[vagrant]
+192.168.50.51
+
+[vagrant:vars]
+iptablesTemplatePath=templates/iptables
+vhostTemplatePath=templates/ssl.conf
+mysqlTemplatePath=templates/mysql

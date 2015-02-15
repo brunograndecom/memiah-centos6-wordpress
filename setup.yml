@@ -1,0 +1,107 @@
+---
+- hosts: vagrant
+  remote_user: vagrant
+  sudo: yes
+  tasks:
+    - name: Install unzip
+      yum: name=unzip state=latest
+
+    - name: Copy iptables configuration
+      template: src={{ iptablesTemplatePath }} dest=/etc/sysconfig/
+
+    - name: Start iptables service and add to boot
+      service:
+        name: "iptables"
+        state: started
+        enabled: yes
+
+    - name: Restart iptables
+      service:
+        name: "iptables"
+        state: restarted
+
+    - name: Install the latest version of Apache
+      yum: name=httpd state=latest
+
+    - name: Install mod_ssl
+      yum: name=mod_ssl state=latest
+
+    - name: Create an ssl directory
+      file:
+        dest: "/etc/httpd/ssl"
+        state: "directory"
+
+    - name: Start httpd service and add to boot
+      service:
+        name: "httpd"
+        state: started
+        enabled: yes
+
+    - name: Create self-signed SSL certificate
+      command: openssl req -new -nodes -x509 -subj "/C=UK/ST=Berkshire/L=Newbury/O=IT/CN=${ansible_fqdn}" -days 3650 -keyout /etc/httpd/ssl/server.key -out /etc/httpd/ssl/server.crt -extensions v3_ca creates=/etc/httpd/ssl/server.crt
+
+    - name: Copy virtual host setup over
+      template: src={{ vhostTemplatePath }} dest=/etc/httpd/conf.d/
+
+    - name: Install MySQL client, server and related libraries
+      yum: name={{ item }} state=latest
+      with_items:
+        - mysql-server
+        - MySQL-python
+
+    - name: Start MySQL service
+      service:
+        name: "mysqld"
+        state: started
+        enabled: yes
+
+    - name: Drop MySQL test database
+      mysql_db: name=test state=absent login_user="root" login_password=""
+
+    - name: Setup empty database for WordPress
+      mysql_db:
+        name: "wordpress"
+        encoding: "utf8"
+        collation: "utf8_unicode_ci"
+        state: "present"
+        login_user: "root"
+        login_password: ""
+
+    - name: Setup MySQL user for WordPress
+      mysql_user:
+        name: "user_wp"
+        password: "wordpress"
+        host: "localhost"
+        priv: "wordpress.*:ALL"
+        state: "present"
+        login_user: "root"
+        login_password: ""
+
+    - name: Install PHP and its modules
+      yum: name={{ item }} state=latest
+      with_items:
+        - php
+        - php-mysql
+
+    - name: Put "vagrant" user in apache group
+      user:
+        name: "vagrant"
+        groups: "apache"
+        append: yes
+
+    - name: Unzip WordPress
+      unarchive: src=wordpress.zip dest=/var/www/
+
+    - name: Configure permissions on wordpress location
+      file: path=/var/www/wordpress owner=apache group=apache mode=0755
+
+    - name: Restart httpd
+      service:
+        name: "httpd"
+        state: restarted
+
+    - name: Add user
+      user: name=some_user
+
+    - name: Add public key to authorized_keys
+      authorized_key: user=some_user key="{{ lookup('file', '/path/some_user/.ssh/id_rsa.pub') }}"
