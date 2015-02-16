@@ -3,6 +3,8 @@
 Builds httpd, mysql, php and wordpress on to an existing centos 6.5 vagrant box.
 Httpd is configured with a self signed certificate.
 
+Ports 443 and 22 (not particularly secured) are open.  22 for ssh convenience.
+
 ## Requirements
 
 * vagrant 1.7.x+ [vagrant 1.7.x+](https://www.vagrantup.com/ "Vagrant")
